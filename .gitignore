@@ -19,9 +19,11 @@
 
 # production
 /build
+/.build
 
 # misc
 .DS_Store
+/.tmp
 *.pem
 
 # debug
