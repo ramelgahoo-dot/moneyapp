@@ -4,6 +4,12 @@ Car flipping and finance tracker built with Next.js + Supabase.
 
 ## Local Setup
 
+0. Use the repo Node version (recommended):
+
+```bash
+nvm use
+```
+
 1. Install dependencies:
 
 ```bash
@@ -25,15 +31,25 @@ STRIPE_PRICE_ID_PRO=...
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
+Template: `.env.example`
+
 3. Run SQL migrations in Supabase SQL Editor:
 
 - `multi_tenant_migration.sql`
 - `billing_migration.sql`
 
+If the original Supabase project was deleted, follow `docs/supabase-restore.md` first.
+
 4. Start dev server:
 
 ```bash
 npm run dev
+```
+
+If setup is failing, run the preflight check directly:
+
+```bash
+npm run doctor
 ```
 
 5. Open:

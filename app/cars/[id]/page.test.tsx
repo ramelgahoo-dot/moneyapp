@@ -26,6 +26,11 @@ vi.mock('../EditCarModal', () => ({
   default: () => null,
 }))
 
+vi.mock('@/lib/supabase/runtime', () => ({
+  getSupabasePublicConfigError: () => null,
+  getSupabaseLoadErrorMessage: () => 'Unable to load data from Supabase.',
+}))
+
 vi.mock('@/lib/supabaseClient', () => {
   const soldCar = {
     id: 'car-1',

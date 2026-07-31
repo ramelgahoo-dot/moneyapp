@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { getSupabaseLoadErrorMessage, getSupabasePublicConfigError } from '@/lib/supabase/runtime'
 import type { Car, CarExpense } from '@/types'
 import { ArrowLeft, Plus, Trash2, Pencil, X } from 'lucide-react'
 import Link from 'next/link'
@@ -26,6 +27,7 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
   const [showDeleteSaleConfirm, setShowDeleteSaleConfirm] = useState(false)
   const [showDeleteExpenseConfirm, setShowDeleteExpenseConfirm] = useState(false)
   const [expenseToDelete, setExpenseToDelete] = useState<CarExpense | null>(null)
+  const [loadError, setLoadError] = useState('')
   const [deleteSaleError, setDeleteSaleError] = useState('')
   const [deleteExpenseError, setDeleteExpenseError] = useState('')
   const [expForm, setExpForm] = useState({ category: '', amount: '', date: new Date().toISOString().split('T')[0], description: '' })
@@ -34,17 +36,43 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
   const parsedExpAmount = parseFloat(expForm.amount)
   const amountInvalid = !expForm.amount || !Number.isFinite(parsedExpAmount) || parsedExpAmount <= 0
 
-  async function load() {
-    const [{ data: carData }, { data: expData }] = await Promise.all([
-      supabase.from('cars').select('*').eq('id', id).single(),
-      supabase.from('car_expenses').select('*').eq('car_id', id).order('date', { ascending: false }),
-    ])
-    setCar(carData)
-    setExpenses(expData ?? [])
-    setLoading(false)
-  }
+  const load = useCallback(async () => {
+    setLoading(true)
+    setLoadError('')
 
-  useEffect(() => { load() }, [id])
+    const configError = getSupabasePublicConfigError()
+    if (configError) {
+      setCar(null)
+      setExpenses([])
+      setLoadError(configError)
+      setLoading(false)
+      return
+    }
+
+    try {
+      const [carResult, expensesResult] = await Promise.all([
+        supabase.from('cars').select('*').eq('id', id).single(),
+        supabase.from('car_expenses').select('*').eq('car_id', id).order('date', { ascending: false }),
+      ])
+
+      if (carResult.error ?? expensesResult.error) {
+        throw carResult.error ?? expensesResult.error
+      }
+
+      setCar(carResult.data)
+      setExpenses(expensesResult.data ?? [])
+    } catch (err: unknown) {
+      setCar(null)
+      setExpenses([])
+      setLoadError(getSupabaseLoadErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
+
+  useEffect(() => {
+    void load()
+  }, [load])
 
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
   const profit = car ? getSoldCarProfit(car, expenses) : null
@@ -161,6 +189,7 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
   }
 
   if (loading) return <div className="text-gray-400 p-6">Loading...</div>
+  if (loadError) return <div className="text-red-200 p-6">{loadError}</div>
   if (!car) return <div className="text-gray-400 p-6">Car not found.</div>
 
   return (
