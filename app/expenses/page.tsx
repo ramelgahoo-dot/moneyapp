@@ -9,6 +9,7 @@ import { exportToCsv } from '@/lib/exportCsv'
 import { apiRequest } from '@/lib/apiRequest'
 import { isVehiclePurchaseCategory } from '@/lib/vehiclePurchase'
 import { buildRecentWeekOptions, buildWeekOption, findWeekOption, isDateWithinWeek, type WeekOption } from '@/lib/weekRange'
+import CarMultiSelect from '@/components/CarMultiSelect'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
@@ -97,6 +98,7 @@ export default function ExpensesPage() {
   const [selectedCarId, setSelectedCarId] = useState('all')
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<UnifiedExpense | null>(null)
+  const [entryCarIds, setEntryCarIds] = useState<string[]>([])
   const [form, setForm] = useState({
     expenseType: 'general' as ExpenseType,
     carId: '',
@@ -223,7 +225,7 @@ export default function ExpensesPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.amount) { setError('Amount is required.'); return }
-    if (form.expenseType === 'car' && !form.carId) { setError('Select a car for car-specific expenses.'); return }
+    if (form.expenseType === 'car' && entryCarIds.length === 0) { setError('Select at least one car for car-specific expenses.'); return }
     setError('')
     setSaving(true)
     try {
@@ -236,7 +238,7 @@ export default function ExpensesPage() {
           date: form.date,
           description: form.description.trim() || null,
           expenseType: form.expenseType,
-          carId: form.expenseType === 'car' ? form.carId : null,
+          carIds: form.expenseType === 'car' ? entryCarIds : undefined,
         }),
       })
     } catch (err: unknown) {
@@ -245,6 +247,7 @@ export default function ExpensesPage() {
       return
     }
     setSaving(false)
+    setEntryCarIds([])
     setForm({ expenseType: 'general', carId: '', category: 'Other', amount: '', date: new Date().toISOString().split('T')[0], description: '' })
     setShowAdd(false)
     load()
@@ -552,17 +555,7 @@ export default function ExpensesPage() {
                 </div>
               </div>
               {form.expenseType === 'car' && (
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Car</label>
-                  <select
-                    value={form.carId}
-                    onChange={(e) => setForm((p) => ({ ...p, carId: e.target.value }))}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Select a car</option>
-                    {cars.map((car) => <option key={car.id} value={car.id}>{car.year} {car.make} {car.model}</option>)}
-                  </select>
-                </div>
+                <CarMultiSelect cars={cars} selectedIds={entryCarIds} onChange={setEntryCarIds} amount={form.amount} disabled={saving} />
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

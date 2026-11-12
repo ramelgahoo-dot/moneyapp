@@ -2,6 +2,13 @@
 
 Car flipping and finance tracker built with Next.js + Supabase.
 
+## Adding an Expense to Multiple Cars
+
+For a shared charge, choose **Car-specific** in Add Expense and select each
+vehicle that should receive it. The entered amount is recorded separately for
+each selected car, not divided among them; the form previews the per-car amount
+and combined total. The save creates one expense row per car in a single insert.
+
 ## Local Setup
 
 0. Use the repo Node version (recommended):

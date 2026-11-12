@@ -9,6 +9,7 @@ type CreateExpensePayload = {
   description?: string | null
   expenseType?: 'general' | 'car'
   carId?: string | null
+  carIds?: string[]
 }
 
 type UpdateExpensePayload = CreateExpensePayload & {
@@ -56,19 +57,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid expense payload' }, { status: 400 })
     }
 
-    if (expenseType === 'car' && !carId) {
-      return NextResponse.json({ error: 'Car is required for car-specific expenses.' }, { status: 400 })
-    }
-
     if (expenseType === 'car') {
-      const { error } = await admin.from('car_expenses').insert({
-        car_id: carId,
+      const selection = body.carIds === undefined ? [carId] : body.carIds
+      if (!Array.isArray(selection) || selection.length === 0 || !selection.every((id) => typeof id === 'string' && id.trim())) {
+        return NextResponse.json({ error: 'Select at least one valid car for car-specific expenses.' }, { status: 400 })
+      }
+      const carIds = [...new Set(selection.map((id) => id.trim()))]
+      const { data: cars, error: carsError } = await admin
+        .from('cars')
+        .select('id')
+        .in('id', carIds)
+        .eq('user_id', user.id)
+
+      if (carsError) {
+        return NextResponse.json({ error: carsError.message }, { status: 400 })
+      }
+      if (!cars || cars.length !== carIds.length) {
+        return NextResponse.json({ error: 'One or more selected cars are unavailable.' }, { status: 400 })
+      }
+
+      const { error } = await admin.from('car_expenses').insert(carIds.map((id) => ({
+        car_id: id,
         category,
         amount,
         date,
         description,
         user_id: user.id,
-      })
+      })))
 
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 400 })
